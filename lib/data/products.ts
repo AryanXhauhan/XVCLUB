@@ -18,9 +18,9 @@ export const products: Product[] = [
             { name: 'Nude', code: '#D8CFC4' },
             { name: 'Bold', code: '#8B0000' },
         ],
+
         images: [
-            '/products/lipstick-nude.jpg',
-            '/products/lipstick-bold.jpg',
+            '/xvc.jpg',
         ],
         stock: 100,
         createdAt: new Date(),

@@ -10,8 +10,9 @@ export default function HeroModelImage() {
         <div className="relative h-[500px] md:h-[600px] lg:h-[700px] fade-in" style={{ animationDelay: '0.4s' }}>
             <div className="relative w-full h-full overflow-hidden rounded-sm shadow-premium bg-gradient-to-br from-xvc-nude/30 to-xvc-taupe/20">
                 {!imageError ? (
+
                     <Image
-                        src="/models/hero-model.jpg"
+                        src="/xvc.jpg"
                         alt="XVC Model"
                         fill
                         className="object-cover object-center"
