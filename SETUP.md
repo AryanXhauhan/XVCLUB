@@ -3,7 +3,7 @@
 ## 📋 Prerequisites
 - Node.js 18+ installed
 - Firebase account
-- Stripe account
+ - Razorpay account
 - Resend account (for emails)
 
 ---
@@ -12,7 +12,13 @@
 
 ### 1.1 Create Firebase Project
 1. Go to [Firebase Console](https://console.firebase.google.com)
-2. Click "Add project"
+## Razorpay Configuration
+
+# Razorpay live keys (set in production host, do NOT commit keys)
+RAZORPAY_KEY_ID=rzp_live_your_key_id_here
+RAZORPAY_KEY_SECRET=your_razorpay_secret_here
+RAZORPAY_WEBHOOK_SECRET=your_razorpay_webhook_secret_here
+
 3. Project name: `xvalente-1ddbd` (or your project name)
 4. Enable Google Analytics (optional)
 
@@ -48,25 +54,25 @@
 
 ---
 
-## 💳 Step 2: Stripe Setup
+## 💳 Step 2: Razorpay Setup
 
-### 2.1 Create Stripe Account
-1. Go to [Stripe Dashboard](https://dashboard.stripe.com)
+### 2.1 Create Razorpay Account
+1. Go to [Razorpay Dashboard](https://dashboard.razorpay.com)
 2. Sign up or login
-3. Complete account setup
+3. Complete account setup and verify your business details
 
 ### 2.2 Get API Keys
-1. Go to **Developers** → **API keys**
-2. Copy **Publishable key** (starts with `pk_test_` or `pk_live_`)
-3. Copy **Secret key** (starts with `sk_test_` or `sk_live_`)
-4. **Keep secret key secure!**
+1. Go to **Settings → API Keys**
+2. Create a new key (choose "Live" for production)
+3. Copy **Key ID** (starts with `rzp_live_...`) and **Key Secret**
+4. **Keep the Key Secret secure! Do NOT commit keys to git.**
 
 ### 2.3 Set Up Webhook (After Deployment)
-1. Go to **Developers** → **Webhooks**
-2. Click **Add endpoint**
-3. Endpoint URL: `https://yourdomain.com/api/webhooks/stripe`
-4. Select event: `checkout.session.completed`
-5. Copy **Signing secret** (starts with `whsec_`)
+1. Go to **Settings → Webhooks** in Razorpay Dashboard
+2. Click **Add webhook**
+3. Endpoint URL: `https://yourdomain.com/api/webhooks/stripe` (route kept for compatibility)
+4. Select events: `payment.captured`, `order.paid` (or as needed)
+5. Copy the webhook secret and save it as `RAZORPAY_WEBHOOK_SECRET` in your host environment
 
 ---
 
@@ -109,10 +115,11 @@ FIREBASE_ADMIN_PROJECT_ID=xvalente-1ddbd
 FIREBASE_ADMIN_CLIENT_EMAIL=your-service-account@xvalente-1ddbd.iam.gserviceaccount.com
 FIREBASE_ADMIN_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nYOUR_PRIVATE_KEY_HERE\n-----END PRIVATE KEY-----\n"
 
-# Stripe Configuration
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_your_publishable_key_here
-STRIPE_SECRET_KEY=sk_test_your_secret_key_here
-STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret_here
+# Razorpay Configuration
+# Set these in your host (Netlify/Vercel) for production. Do NOT commit secrets.
+RAZORPAY_KEY_ID=rzp_live_your_key_id_here
+RAZORPAY_KEY_SECRET=your_razorpay_secret_here
+RAZORPAY_WEBHOOK_SECRET=your_razorpay_webhook_secret_here
 
 # Resend Email Configuration
 RESEND_API_KEY=re_your_resend_api_key_here
@@ -208,7 +215,7 @@ adminAuth.setCustomUserClaims(uid, { admin: true })
 1. Add items to cart
 2. Go to checkout
 3. Fill customer details
-4. Complete Stripe checkout (use test card: `4242 4242 4242 4242`)
+4. Complete Razorpay checkout
 5. Verify order success page
 6. Check admin dashboard for order
 
@@ -244,16 +251,17 @@ npm run build
 
 ### 8.3 Update Environment Variables for Production
 - Update `NEXT_PUBLIC_SITE_URL` to your production domain
-- Use production Stripe keys
-- Use production Resend API key
-- Update Stripe webhook URL to production
+ - Update `NEXT_PUBLIC_SITE_URL` to your production domain
+ - Use production Razorpay keys
+ - Use production Resend API key
+ - Update Razorpay webhook URL to production
 
-### 8.4 Set Up Stripe Webhook in Production
-1. Go to Stripe Dashboard → Webhooks
-2. Add endpoint: `https://yourdomain.com/api/webhooks/stripe`
-3. Select event: `checkout.session.completed`
+### 8.4 Set Up Razorpay Webhook in Production
+1. Go to Razorpay Dashboard → Settings → Webhooks
+2. Add endpoint: `https://yourdomain.com/api/webhooks/stripe` (route kept for compatibility)
+3. Select events: `payment.captured`, `order.paid`
 4. Copy webhook secret
-5. Update `STRIPE_WEBHOOK_SECRET` in production env vars
+5. Update `RAZORPAY_WEBHOOK_SECRET` in production env vars
 
 ---
 
@@ -271,7 +279,7 @@ npm run build
 - [ ] Mobile responsive tested
 - [ ] Return policy visible on all pages
 - [ ] Production domain configured
-- [ ] Stripe webhook configured for production
+ - [ ] Razorpay webhook configured for production
 - [ ] SSL certificate active (HTTPS)
 
 ---
@@ -288,10 +296,10 @@ npm run build
 - Check Firebase Auth is enabled
 - Verify email/password provider is enabled
 
-### Stripe Checkout Not Working
-- Verify Stripe keys are correct
-- Check API version compatibility
-- Verify webhook secret is set
+### Razorpay Checkout Not Working
+- Verify Razorpay keys are correct
+- Check API/webhook logs in Razorpay dashboard
+- Verify `RAZORPAY_WEBHOOK_SECRET` is set in production env
 
 ### Email Not Sending
 - Check Resend API key
@@ -306,7 +314,7 @@ If you face any issues, check:
 1. Browser console for errors
 2. Server logs (terminal)
 3. Firebase Console → Firestore → Usage
-4. Stripe Dashboard → Logs
+4. Razorpay Dashboard → Logs
 5. Resend Dashboard → Logs
 
 ---
