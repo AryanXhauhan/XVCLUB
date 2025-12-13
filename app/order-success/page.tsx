@@ -109,7 +109,7 @@ export default function OrderSuccessPage() {
                             Your payment is being processed. If you've completed the payment, please check your email for confirmation.
                         </p>
                         <p className="text-xvc-graphite mb-8">
-                            If you haven't received a confirmation email within a few minutes, please contact us at{' '}
+                            If you haven&apos;t received a confirmation email within a few minutes, please contact us at{' '}
                             <a href="mailto:support@xvc.com" className="text-xvc-black underline">
                                 support@xvc.com
                             </a>
@@ -127,7 +127,7 @@ export default function OrderSuccessPage() {
                 <section className="editorial-container py-20 md:py-32">
                     <h1 className="text-xvc-black mb-4">Order Not Found</h1>
                     <p className="text-xvc-graphite mb-8">
-                        We couldn't find your order. Please check your order confirmation email or contact support.
+                        We couldn&apos;t find your order. Please check your order confirmation email or contact support.
                     </p>
                     <Button href="/">Return Home</Button>
                 </section>
@@ -141,7 +141,7 @@ export default function OrderSuccessPage() {
                 <div className="max-w-2xl mx-auto">
                     <h1 className="text-xvc-black mb-4">Order Confirmed</h1>
                     <p className="text-xl text-xvc-graphite mb-12">
-                        Thank you for your order, {order.customerName}! We've received your payment and will process your order shortly.
+                        Thank you for your order, {order.customerName}! We&apos;ve received your payment and will process your order shortly.
                     </p>
 
                     {/* Order Details */}

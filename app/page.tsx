@@ -71,7 +71,7 @@ export default async function HomePage() {
                     <h2 className="text-xvc-black mb-12 text-4xl md:text-6xl lg:text-7xl">This is XVC.</h2>
                     <div className="space-y-8 text-lg md:text-xl lg:text-2xl text-xvc-graphite leading-relaxed">
                         <p className="text-3xl md:text-4xl lg:text-5xl font-headline text-xvc-black leading-tight">XVC is not about covering up.</p>
-                        <p className="text-3xl md:text-4xl lg:text-5xl font-headline text-xvc-black leading-tight">It's about showing up.</p>
+                        <p className="text-3xl md:text-4xl lg:text-5xl font-headline text-xvc-black leading-tight">It&apos;s about showing up.</p>
                         <p className="mt-12 text-lg md:text-xl lg:text-2xl text-xvc-graphite max-w-3xl leading-relaxed">
                             We create statement beauty essentials designed for confidence, not perfection.
                             Minimal products. Maximum impact.

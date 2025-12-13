@@ -155,7 +155,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
 
                             {/* Product Description */}
                             <div className="border-t border-xvc-taupe/30 pt-6">
-                                <h2 className="text-lg text-xvc-black mb-4">Why you'll love it</h2>
+                                <h2 className="text-lg text-xvc-black mb-4">Why you&apos;ll love it</h2>
                                 <p className="text-xvc-graphite leading-relaxed">{product.description}</p>
                             </div>
                         </div>
