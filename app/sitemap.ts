@@ -1,6 +1,7 @@
 
 import { MetadataRoute } from 'next';
-import { adminDb } from '@/lib/firebase/admin';
+
+import { initAdmin } from '@/lib/firebase-admin';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://xvc.com';
@@ -39,8 +40,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         },
     ];
 
+
     // Dynamic product pages
     try {
+        const { adminDb } = initAdmin();
         const productsSnapshot = await adminDb.collection('products').get();
         const productPages: MetadataRoute.Sitemap = [];
 

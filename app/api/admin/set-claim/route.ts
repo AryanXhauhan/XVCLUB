@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminAuth } from '@/lib/firebase/admin';
+
+import { initAdmin } from '@/lib/firebase-admin';
 import { setAdminClaim } from '@/lib/firebase/adminAuth';
 
 /**
@@ -10,7 +11,10 @@ import { setAdminClaim } from '@/lib/firebase/adminAuth';
  * - Verify the requesting user is already an admin
  * - Or use a secure token/secret
  */
+
 export async function POST(request: NextRequest) {
+    const { adminAuth } = initAdmin();
+
     try {
         const { idToken } = await request.json();
 

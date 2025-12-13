@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { adminDb } from '@/lib/firebase/admin';
+
+import { initAdmin } from '@/lib/firebase-admin';
 import { OrderItem, ShippingAddress } from '@/lib/types';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -8,7 +9,9 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 });
 
 export async function POST(request: NextRequest) {
+
     try {
+        const { adminDb } = initAdmin();
         const body = await request.json();
         const { items, customerName, customerEmail, customerPhone, shippingAddress } = body;
 

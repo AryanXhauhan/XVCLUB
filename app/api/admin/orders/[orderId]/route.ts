@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb, adminAuth } from '@/lib/firebase/admin';
+
+import { initAdmin } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 
 interface RouteParams {
@@ -11,10 +12,13 @@ interface RouteParams {
 /**
  * Protected API route - verifies admin custom claim before allowing updates
  */
+
 export async function PATCH(
     request: NextRequest,
     { params }: RouteParams
 ) {
+    const { adminDb, adminAuth } = initAdmin();
+
     try {
         // Get authorization header
         const authHeader = request.headers.get('authorization');

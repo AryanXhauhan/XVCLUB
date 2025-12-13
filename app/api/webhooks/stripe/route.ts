@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { adminDb } from '@/lib/firebase/admin';
+
+import { initAdmin } from '@/lib/firebase-admin';
 import { Order, OrderItem, ShippingAddress } from '@/lib/types';
 import { FieldValue } from 'firebase-admin/firestore';
 import { sendOrderConfirmationEmail } from '@/lib/email/sendOrderConfirmation';
@@ -26,7 +27,9 @@ export async function POST(request: NextRequest) {
 
     let event: Stripe.Event;
 
+
     try {
+        const { adminDb } = initAdmin();
         // Step 1: Verify signature
         event = stripe.webhooks.constructEvent(
             body,

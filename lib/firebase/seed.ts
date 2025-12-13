@@ -1,10 +1,13 @@
-import { adminDb } from './admin';
+
+import { initAdmin } from '@/lib/firebase-admin';
 import { products } from '@/lib/data/products';
 import { Product } from '@/lib/types';
 import { FieldValue } from 'firebase-admin/firestore';
 
+
 export async function seedProducts() {
     console.log('Starting product seeding...');
+    const { adminDb } = initAdmin();
 
     try {
         const batch = adminDb.batch();
