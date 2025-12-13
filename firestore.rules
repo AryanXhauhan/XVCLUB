@@ -1,0 +1,40 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.admin == true;
+    }
+
+    function isServer() {
+      // Webhook uses Firebase Admin SDK = no auth context
+      return request.auth == null;
+    }
+
+    // PRODUCTS - Public read, admin write
+    match /products/{productId} {
+      // Anyone can read products (public catalog)
+      allow read: if true;
+      
+      // Only admin can create/update/delete products
+      allow write: if isAdmin();
+    }
+
+    // ORDERS - MOST CRITICAL
+    match /orders/{orderId} {
+      // Only admin can read orders
+      allow read: if isAdmin();
+      
+      // Only server (webhook via Admin SDK) can create orders
+      allow create: if isServer();
+      
+      // Only admin can update order status (Paid → Shipped)
+      allow update: if isAdmin();
+      
+      // Nobody can delete orders
+      allow delete: if false;
+    }
+  }
+}
