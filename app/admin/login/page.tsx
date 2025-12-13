@@ -21,26 +21,11 @@ export default function AdminLoginPage() {
             // Sign in with Firebase Auth
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
-            const idToken = await user.getIdToken();
 
-            // Set admin claim via API
-            const response = await fetch('/api/admin/set-claim', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ idToken }),
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to set admin claim');
-            }
-
-            // Refresh token to get updated claims
-            await user.getIdToken(true);
-
-            toast.success('Logged in successfully');
-            router.push('/admin');
+            // Admin claims must be provisioned only via secure server-side processes.
+            toast.success('Signed in. Admin access must be provisioned server-side.');
+            // Do not redirect to /admin here — admin access must be granted separately.
+            router.push('/');
         } catch (error: any) {
             console.error('Login error:', error);
             toast.error(error.message || 'Login failed');
