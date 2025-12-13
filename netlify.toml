@@ -1,0 +1,7 @@
+[build]
+  # Build command
+  command = "npm run build"
+  # Publish directory
+  publish = ".next"
+  # Environment variables
+  environment = { NODE_VERSION = "20" }

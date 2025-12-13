@@ -1,29 +1,15 @@
+
 import Link from "next/link";
-import { db } from '@/lib/firebase/config';
-import { collection, getDocs, limit } from 'firebase/firestore';
 import { Product } from '@/lib/types';
+import { products as staticProducts } from '@/lib/data/products';
 import ProductCard from '@/components/ui/ProductCard';
 import TypingAnimation from '@/components/ui/TypingAnimation';
 import HeroModelImage from '@/components/ui/HeroModelImage';
 
 async function getProducts(): Promise<Product[]> {
-    try {
-        const querySnapshot = await getDocs(collection(db, 'products'));
-        
-        const products: Product[] = [];
-        querySnapshot.forEach((doc) => {
-            products.push({
-                id: doc.id,
-                ...doc.data(),
-            } as Product);
-        });
-        
-        // Return first 3 products (hero products)
-        return products.slice(0, 3);
-    } catch (error) {
-        console.error('Error fetching products:', error);
-        return [];
-    }
+    // Use static data instead of Firebase during build time
+    // This prevents Firebase permission errors during static generation
+    return staticProducts.slice(0, 3);
 }
 
 export default async function HomePage() {

@@ -5,8 +5,9 @@ import { Order, OrderItem, ShippingAddress } from '@/lib/types';
 import { FieldValue } from 'firebase-admin/firestore';
 import { sendOrderConfirmationEmail } from '@/lib/email/sendOrderConfirmation';
 
+
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-    apiVersion: '2024-12-18.acacia',
+    apiVersion: '2025-11-17.clover',
 });
 
 // Disable body parsing for webhook signature verification

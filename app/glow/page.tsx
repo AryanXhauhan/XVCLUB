@@ -1,7 +1,6 @@
 import { Metadata } from 'next';
-import { db } from '@/lib/firebase/config';
-import { collection, query, where, getDocs } from 'firebase/firestore';
 import { Product } from '@/lib/types';
+import { products as staticProducts } from '@/lib/data/products';
 import ProductCard from '@/components/ui/ProductCard';
 
 export const metadata: Metadata = {
@@ -14,23 +13,9 @@ export const metadata: Metadata = {
 };
 
 async function getProducts(): Promise<Product[]> {
-    try {
-        const q = query(collection(db, 'products'), where('category', '==', 'glow'));
-        const querySnapshot = await getDocs(q);
-        
-        const products: Product[] = [];
-        querySnapshot.forEach((doc) => {
-            products.push({
-                id: doc.id,
-                ...doc.data(),
-            } as Product);
-        });
-        
-        return products;
-    } catch (error) {
-        console.error('Error fetching products:', error);
-        return [];
-    }
+    // Use static data and filter by category
+    // This prevents Firebase permission errors during static generation
+    return staticProducts.filter(product => product.category === 'glow');
 }
 
 export default async function GlowPage() {
@@ -57,4 +42,3 @@ export default async function GlowPage() {
         </main>
     );
 }
-

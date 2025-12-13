@@ -1,8 +1,7 @@
 import { Metadata } from 'next';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
-import { db } from '@/lib/firebase/config';
-import { collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { products as staticProducts } from '@/lib/data/products';
 import { Product } from '@/lib/types';
 import AddToCartButton from '@/components/product/AddToCartButton';
 
@@ -13,28 +12,10 @@ interface PageProps {
 }
 
 async function getProduct(slug: string): Promise<Product | null> {
-    try {
-        const q = query(
-            collection(db, 'products'),
-            where('category', '==', 'glow'),
-            where('slug', '==', slug),
-            limit(1)
-        );
-        const querySnapshot = await getDocs(q);
-        
-        if (querySnapshot.empty) {
-            return null;
-        }
-        
-        const doc = querySnapshot.docs[0];
-        return {
-            id: doc.id,
-            ...doc.data(),
-        } as Product;
-    } catch (error) {
-        console.error('Error fetching product:', error);
-        return null;
-    }
+    // Use static data instead of Firebase
+    // This prevents Firebase permission errors during build
+    const product = staticProducts.find(p => p.slug === slug && p.category === 'glow');
+    return product || null;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -165,4 +146,3 @@ export default async function ProductDetailPage({ params }: PageProps) {
         </>
     );
 }
-

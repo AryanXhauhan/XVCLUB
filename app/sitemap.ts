@@ -1,6 +1,6 @@
+
 import { MetadataRoute } from 'next';
 import { adminDb } from '@/lib/firebase/admin';
-import { collection, getDocs } from 'firebase-admin/firestore';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://xvc.com';
