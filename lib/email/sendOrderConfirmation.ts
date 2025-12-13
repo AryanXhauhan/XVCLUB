@@ -1,10 +1,18 @@
+
 import { Resend } from 'resend';
 import { Order } from '@/lib/types';
 import { getOrderConfirmationEmail } from './templates';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Only initialize Resend if API key is available
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 export async function sendOrderConfirmationEmail(order: Order): Promise<void> {
+    // Skip email if Resend is not configured
+    if (!resend) {
+        console.log('Resend not configured, skipping email for order:', order.id);
+        return;
+    }
+
     try {
         const html = getOrderConfirmationEmail(order);
 
