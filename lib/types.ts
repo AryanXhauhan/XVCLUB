@@ -35,7 +35,8 @@ export interface ShippingAddress {
 
 export interface Order {
     id: string;
-    stripeSessionId: string;
+    razorpayOrderId: string;
+    razorpayPaymentId?: string;
     customerName: string;
     customerEmail: string;
     customerPhone: string;

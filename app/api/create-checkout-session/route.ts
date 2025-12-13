@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Stripe from 'stripe';
+import Razorpay from 'razorpay';
 
 import { initAdmin } from '@/lib/firebase-admin';
 import { OrderItem, ShippingAddress } from '@/lib/types';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-    apiVersion: '2025-11-17.clover',
-});
 
 export async function POST(request: NextRequest) {
 
@@ -69,36 +66,31 @@ export async function POST(request: NextRequest) {
             });
         }
 
-        // Create Stripe checkout session
-        const session = await stripe.checkout.sessions.create({
-            payment_method_types: ['card'],
-            line_items: validatedItems.map((item) => ({
-                price_data: {
-                    currency: 'inr',
-                    product_data: {
-                        name: item.productName,
-                        description: item.shade ? `Shade: ${item.shade}` : undefined,
-                    },
-                    unit_amount: item.price * 100, // Convert to paise
-                },
-                quantity: item.quantity,
-            })),
-            mode: 'payment',
-            success_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/order-success?session_id={CHECKOUT_SESSION_ID}`,
-            cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/checkout`,
-            metadata: {
+        // Create Razorpay order (instantiate SDK lazily to avoid build-time errors)
+        const razorpay = new Razorpay({
+            key_id: process.env.RAZORPAY_KEY_ID!,
+            key_secret: process.env.RAZORPAY_KEY_SECRET!,
+        });
+
+        // Create Razorpay order
+        const razorpayOrder = await razorpay.orders.create({
+            amount: totalAmount * 100, // paise
+            currency: 'INR',
+            receipt: `rcpt_${Date.now()}`,
+            notes: {
                 customerName,
                 customerEmail,
                 customerPhone,
                 address: JSON.stringify(shippingAddress),
                 items: JSON.stringify(validatedItems),
             },
-            shipping_address_collection: {
-                allowed_countries: ['IN'], // India only for now
-            },
         });
 
-        return NextResponse.json({ url: session.url });
+        return NextResponse.json({
+            key: process.env.RAZORPAY_KEY_ID,
+            orderId: razorpayOrder.id,
+            amount: razorpayOrder.amount,
+        });
     } catch (error: any) {
         console.error('Checkout session error:', error);
         return NextResponse.json(

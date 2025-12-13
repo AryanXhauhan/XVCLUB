@@ -10,13 +10,13 @@ import Button from '@/components/ui/Button';
 
 export default function OrderSuccessClient() {
     const searchParams = useSearchParams();
-    const sessionId = searchParams.get('session_id');
+    const orderIdParam = searchParams.get('order_id');
     const [order, setOrder] = useState<Order | null>(null);
     const [isPolling, setIsPolling] = useState(false);
     const [pollTimeout, setPollTimeout] = useState(false);
 
     useEffect(() => {
-        if (!sessionId) {
+        if (!orderIdParam) {
             return;
         }
 
@@ -24,7 +24,7 @@ export default function OrderSuccessClient() {
             try {
                 const q = query(
                     collection(db, 'orders'),
-                    where('stripeSessionId', '==', sessionId),
+                    where('razorpayOrderId', '==', orderIdParam),
                     limit(1)
                 );
                 const querySnapshot = await getDocs(q);
@@ -65,15 +65,15 @@ export default function OrderSuccessClient() {
                 clearTimeout(timeout);
             };
         }
-    }, [sessionId, order, pollTimeout]);
+    }, [orderIdParam, order, pollTimeout]);
 
-    if (!sessionId) {
+    if (!orderIdParam) {
         return (
             <main className="min-h-screen bg-xvc-offwhite">
                 <section className="editorial-container py-20 md:py-32">
                     <h1 className="text-xvc-black mb-4">Invalid Order</h1>
                     <p className="text-xvc-graphite mb-8">
-                        No session ID provided. Please check your order confirmation email.
+                        No order ID provided. Please check your order confirmation email.
                     </p>
                     <Button href="/">Return Home</Button>
                 </section>

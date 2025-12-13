@@ -84,13 +84,45 @@ export default function CheckoutPage() {
                 throw new Error(error.message || 'Failed to create checkout session');
             }
 
-            const { url } = await response.json();
-            
-            if (url) {
-                window.location.href = url;
-            } else {
-                throw new Error('No checkout URL received');
+            const { key, orderId, amount } = await response.json();
+
+            if (!key || !orderId) {
+                throw new Error('Invalid checkout response');
             }
+
+            // Load Razorpay checkout script
+            const loadRazorpay = () => new Promise<boolean>((resolve) => {
+                const script = document.createElement('script');
+                script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+                script.onload = () => resolve(true);
+                script.onerror = () => resolve(false);
+                document.body.appendChild(script);
+            });
+
+            const ok = await loadRazorpay();
+            if (!ok) throw new Error('Failed to load Razorpay SDK');
+
+            const options: any = {
+                key,
+                amount: amount,
+                currency: 'INR',
+                order_id: orderId,
+                name: 'Xandre Valente Club',
+                description: 'XVC Order',
+                handler: function (response: any) {
+                    // On success, redirect to order-success with identifiers
+                    window.location.href = `/order-success?order_id=${response.razorpay_order_id}&payment_id=${response.razorpay_payment_id}`;
+                },
+                prefill: {
+                    name: customerName,
+                    email: customerEmail,
+                    contact: customerPhone,
+                },
+            };
+
+            // @ts-ignore
+            const rzp = new (window as any).Razorpay(options);
+            rzp.open();
         } catch (error: any) {
             console.error('Checkout error:', error);
             toast.error(error.message || 'Something went wrong. Please try again.');
