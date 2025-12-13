@@ -20,13 +20,18 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'No signature provided' }, { status: 400 });
     }
 
-    // Verify signature
-    const expected = crypto
-        .createHmac('sha256', process.env.RAZORPAY_WEBHOOK_SECRET!)
-        .update(body)
-        .digest('hex');
+    // Verify signature using timing-safe compare
+    const secret = process.env.RAZORPAY_WEBHOOK_SECRET || '';
+    const expectedBuf = crypto.createHmac('sha256', secret).update(body).digest();
+    let signatureBuf: Buffer;
+    try {
+        signatureBuf = Buffer.from(signature, 'hex');
+    } catch (e) {
+        console.error('Invalid signature format');
+        return NextResponse.json({ error: 'Invalid signature format' }, { status: 400 });
+    }
 
-    if (expected !== signature) {
+    if (signatureBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(expectedBuf, signatureBuf)) {
         console.error('Webhook signature mismatch');
         return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
     }
@@ -56,17 +61,6 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ received: true });
         }
 
-        // Idempotency: check if order already exists
-        const existingOrderQuery = await adminDb
-            .collection('orders')
-            .where('razorpayOrderId', '==', razorpayOrderId)
-            .get();
-
-        if (!existingOrderQuery.empty) {
-            console.log(`Order already exists for razorpayOrder ${razorpayOrderId}, skipping duplicate`);
-            return NextResponse.json({ received: true });
-        }
-
         // Fetch the Razorpay order to get notes (customer details + items)
         const razorpay = new Razorpay({
             key_id: process.env.RAZORPAY_KEY_ID!,
@@ -82,7 +76,7 @@ export async function POST(request: NextRequest) {
         const shippingAddress: ShippingAddress = notes.address ? JSON.parse(String(notes.address)) : ({} as ShippingAddress);
         const items: OrderItem[] = notes.items ? JSON.parse(String(notes.items)) : [];
 
-        // Create order in Firestore
+        // Prepare order data
         const orderData: Omit<Order, 'id'> = {
             razorpayOrderId,
             razorpayPaymentId: razorpayPaymentId,
@@ -98,37 +92,54 @@ export async function POST(request: NextRequest) {
             updatedAt: FieldValue.serverTimestamp(),
         };
 
-        const orderRef = await adminDb.collection('orders').add(orderData);
-        const orderId = orderRef.id;
+        const orderRef = adminDb.collection('orders').doc(razorpayOrderId);
 
-        console.log(`Order created: ${orderId} for razorpayOrder ${razorpayOrderId}`);
-
-        // Decrement stock for each item
-        for (const item of items) {
-            try {
-                await adminDb.collection('products').doc(item.productId).update({
-                    stock: FieldValue.increment(-item.quantity),
-                });
-                console.log(`Stock decremented for product ${item.productId}: -${item.quantity}`);
-            } catch (error) {
-                console.error(`Failed to decrement stock for product ${item.productId}:`, error);
+        // Run a transaction to create the order atomically and decrement stock safely
+        let alreadyProcessed = false;
+        await adminDb.runTransaction(async (tx) => {
+            const orderSnap = await tx.get(orderRef);
+            if (orderSnap.exists) {
+                alreadyProcessed = true;
+                return;
             }
+
+            // For each item, check stock and decrement inside the transaction
+            for (const item of items) {
+                const prodRef = adminDb.collection('products').doc(item.productId);
+                const prodSnap = await tx.get(prodRef);
+                const currentStock = (prodSnap.data()?.stock || 0) as number;
+                if (currentStock < item.quantity) {
+                    throw new Error(`Insufficient stock for product ${item.productId}`);
+                }
+                tx.update(prodRef, { stock: currentStock - item.quantity });
+            }
+
+            // Create the order document using razorpayOrderId as the document ID
+            tx.set(orderRef, orderData);
+        });
+
+        if (alreadyProcessed) {
+            console.log(`Order already exists for razorpayOrder ${razorpayOrderId}, skipping duplicate`);
+            return NextResponse.json({ received: true });
         }
 
-        // Send confirmation email
-        const order: Order = {
-            id: orderId,
+        console.log(`Order created: ${razorpayOrderId} for razorpayOrder ${razorpayOrderId}`);
+
+        // Build an order object for email (use current time for client-side email representation)
+        const orderForEmail: Order = {
+            id: razorpayOrderId,
             ...orderData,
             createdAt: new Date(),
             updatedAt: new Date(),
         };
 
-        await sendOrderConfirmationEmail(order);
+        await sendOrderConfirmationEmail(orderForEmail);
 
-        return NextResponse.json({ received: true, orderId });
+        return NextResponse.json({ received: true, orderId: razorpayOrderId });
     } catch (error: any) {
         console.error('Error processing Razorpay webhook:', error);
-        return NextResponse.json({ error: error.message }, { status: 200 });
+        // Return 500 so webhook sender can retry on failure
+        return NextResponse.json({ error: error.message || 'Internal error' }, { status: 500 });
     }
 }
 
