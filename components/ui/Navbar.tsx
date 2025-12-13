@@ -12,20 +12,12 @@ export default function Navbar() {
 
                 {/* Navigation Links */}
                 <div className="flex items-center gap-8 md:gap-12">
-                    <Link href="/lips" className="text-sm md:text-base font-medium text-xvc-graphite hover:text-xvc-black smooth-transition relative group">
-                        Lips
-                        <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-xvc-black group-hover:w-full smooth-transition" />
-                    </Link>
-                    <Link href="/eyes" className="text-sm md:text-base font-medium text-xvc-graphite hover:text-xvc-black smooth-transition relative group">
-                        Eyes
-                        <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-xvc-black group-hover:w-full smooth-transition" />
-                    </Link>
-                    <Link href="/glow" className="text-sm md:text-base font-medium text-xvc-graphite hover:text-xvc-black smooth-transition relative group">
-                        Glow
-                        <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-xvc-black group-hover:w-full smooth-transition" />
-                    </Link>
                     <Link href="/cart" className="text-sm md:text-base font-semibold text-xvc-black hover:opacity-70 smooth-transition px-3 py-1.5 rounded-sm hover:bg-xvc-nude/20 smooth-transition">
                         Cart
+                    </Link>
+                    <Link href="/policies/contact" className="text-sm md:text-base font-medium text-xvc-graphite hover:text-xvc-black smooth-transition relative group">
+                        Contact
+                        <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-xvc-black group-hover:w-full smooth-transition" />
                     </Link>
                 </div>
             </div>
