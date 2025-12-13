@@ -106,7 +106,7 @@ export default function OrderSuccessPage() {
                     <div className="max-w-2xl mx-auto">
                         <h1 className="text-xvc-black mb-4">Payment Processing</h1>
                         <p className="text-xvc-graphite mb-8">
-                            Your payment is being processed. If you've completed the payment, please check your email for confirmation.
+                            Your payment is being processed. If you&apos;ve completed the payment, please check your email for confirmation.
                         </p>
                         <p className="text-xvc-graphite mb-8">
                             If you haven&apos;t received a confirmation email within a few minutes, please contact us at{' '}
