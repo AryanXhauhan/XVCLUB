@@ -1,6 +1,9 @@
 
 
 
+
+'use client';
+
 import { getAuth } from "firebase/auth";
 import { useEffect } from "react";
 
