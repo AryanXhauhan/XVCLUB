@@ -1,3 +1,5 @@
+
+
 'use client';
 
 import { useState } from 'react';
@@ -18,17 +20,21 @@ export default function AdminLoginPage() {
         setIsLoading(true);
 
         try {
-            // Sign in with Firebase Auth
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
 
-            // Admin claims must be provisioned only via secure server-side processes.
-            toast.success('Signed in. Admin access must be provisioned server-side.');
-            // Do not redirect to /admin here — admin access must be granted separately.
-            router.push('/');
+            toast.success('Login successful');
+            router.replace('/admin');
         } catch (error: any) {
             console.error('Login error:', error);
-            toast.error(error.message || 'Login failed');
+            
+            if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+                toast.error('Invalid email or password');
+            } else if (error.code === 'auth/too-many-requests') {
+                toast.error('Too many failed attempts. Please try again later');
+            } else {
+                toast.error(error.message || 'Login failed');
+            }
         } finally {
             setIsLoading(false);
         }
@@ -37,12 +43,15 @@ export default function AdminLoginPage() {
     return (
         <main className="min-h-screen bg-xvc-offwhite flex items-center justify-center">
             <section className="editorial-container py-20 max-w-md w-full">
-                <h1 className="text-xvc-black mb-8 text-center">Admin Login</h1>
+                <div className="text-center mb-8">
+                    <h1 className="text-3xl font-headline text-xvc-black mb-2">Admin Login</h1>
+                    <p className="text-sm text-xvc-graphite">Authorized personnel only</p>
+                </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div>
-                        <label htmlFor="email" className="block text-sm text-xvc-graphite mb-2">
-                            Email
+                        <label htmlFor="email" className="block text-sm font-medium text-xvc-graphite mb-2">
+                            Email Address
                         </label>
                         <input
                             type="email"
@@ -50,12 +59,14 @@ export default function AdminLoginPage() {
                             required
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className="w-full px-4 py-2 border border-xvc-taupe/30 bg-xvc-offwhite text-xvc-black focus:outline-none focus:border-xvc-black"
+                            className="w-full px-4 py-3 border border-xvc-taupe/30 bg-xvc-offwhite text-xvc-black focus:outline-none focus:border-xvc-black focus:ring-1 focus:ring-xvc-black transition-colors"
+                            placeholder="admin@yourcompany.com"
+                            disabled={isLoading}
                         />
                     </div>
 
                     <div>
-                        <label htmlFor="password" className="block text-sm text-xvc-graphite mb-2">
+                        <label htmlFor="password" className="block text-sm font-medium text-xvc-graphite mb-2">
                             Password
                         </label>
                         <input
@@ -64,14 +75,33 @@ export default function AdminLoginPage() {
                             required
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="w-full px-4 py-2 border border-xvc-taupe/30 bg-xvc-offwhite text-xvc-black focus:outline-none focus:border-xvc-black"
+                            className="w-full px-4 py-3 border border-xvc-taupe/30 bg-xvc-offwhite text-xvc-black focus:outline-none focus:border-xvc-black focus:ring-1 focus:ring-xvc-black transition-colors"
+                            placeholder="Enter your password"
+                            disabled={isLoading}
                         />
                     </div>
 
-                    <Button type="submit" disabled={isLoading} className="w-full">
-                        {isLoading ? 'Logging in...' : 'Login'}
+                    <Button 
+                        type="submit" 
+                        disabled={isLoading} 
+                        className="w-full py-3 text-base font-medium"
+                    >
+                        {isLoading ? (
+                            <div className="flex items-center justify-center">
+                                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                                Signing in...
+                            </div>
+                        ) : (
+                            'Sign In'
+                        )}
                     </Button>
                 </form>
+
+                <div className="mt-6 text-center">
+                    <p className="text-xs text-xvc-graphite/60">
+                        Need admin access? Contact your system administrator.
+                    </p>
+                </div>
             </section>
         </main>
     );

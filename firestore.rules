@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -13,13 +14,45 @@ service cloud.firestore {
       return request.auth == null;
     }
 
+    function isValidEmail(email) {
+      return email.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$');
+    }
+
+    // USERS - Admin only access
+    match /users/{userId} {
+      // Only admin can read user data
+      allow read: if isAdmin();
+      
+      // Only admin can create/update user data
+      allow create, update: if isAdmin();
+      
+      // Users can read their own basic data (no sensitive info)
+      allow get, list: if request.auth != null && request.auth.uid == userId;
+      
+      // Nobody can delete users (admin only via Admin SDK)
+      allow delete: if false;
+    }
+
     // PRODUCTS - Public read, admin write
     match /products/{productId} {
       // Anyone can read products (public catalog)
       allow read: if true;
       
       // Only admin can create/update/delete products
-      allow write: if isAdmin();
+      allow create, update, delete: if isAdmin();
+      
+      // Product data validation
+      allow create: if isAdmin() && 
+        request.resource.data.name is string &&
+        request.resource.data.name.size() > 0 &&
+        request.resource.data.price is number &&
+        request.resource.data.price > 0;
+        
+      allow update: if isAdmin() && 
+        (!('name' in request.resource.data) || 
+         (request.resource.data.name is string && request.resource.data.name.size() > 0)) &&
+        (!('price' in request.resource.data) || 
+         (request.resource.data.price is number && request.resource.data.price > 0));
     }
 
     // ORDERS - MOST CRITICAL
@@ -33,8 +66,43 @@ service cloud.firestore {
       // Only admin can update order status (Paid → Shipped)
       allow update: if isAdmin();
       
+      // Users can read their own orders (limited data)
+      allow get: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      
       // Nobody can delete orders
       allow delete: if false;
+      
+      // Order data validation
+      allow create: if isServer() && 
+        request.resource.data.userId is string &&
+        request.resource.data.email is string &&
+        isValidEmail(request.resource.data.email) &&
+        request.resource.data.total is number &&
+        request.resource.data.total > 0 &&
+        request.resource.data.status in ['pending', 'paid', 'shipped', 'delivered', 'cancelled'];
+        
+      allow update: if isAdmin() && 
+        (!('status' in request.resource.data) || 
+         request.resource.data.status in ['pending', 'paid', 'shipped', 'delivered', 'cancelled']);
+    }
+
+    // ADMIN SETTINGS - Admin only
+    match /adminSettings/{document} {
+      // Only admin can access admin settings
+      allow read, write: if isAdmin();
+    }
+
+    // AUDIT LOGS - Admin only
+    match /auditLogs/{logId} {
+      // Only admin can read audit logs
+      allow read: if isAdmin();
+      
+      // Server can create audit logs
+      allow create: if isServer();
+      
+      // Nobody can update/delete audit logs
+      allow update, delete: if false;
     }
   }
 }
