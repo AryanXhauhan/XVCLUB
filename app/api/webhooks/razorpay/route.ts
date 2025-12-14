@@ -1,3 +1,4 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import Razorpay from 'razorpay';
@@ -6,6 +7,10 @@ import { initAdmin } from '@/lib/firebase-admin';
 import { Order, OrderItem, ShippingAddress } from '@/lib/types';
 import { FieldValue } from 'firebase-admin/firestore';
 import { sendOrderConfirmationEmail } from '@/lib/email/sendOrderConfirmation';
+
+import { analyticsService, EventType } from '@/lib/analytics/analyticsSystem';
+import { fraudDetectionService } from '@/lib/fraud/fraudDetectionSystem';
+import { shippingService } from '@/lib/shipping/shiprocketIntegration';
 
 // Instantiate Razorpay lazily inside handler to avoid build-time env requirement
 
@@ -123,7 +128,78 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ received: true });
         }
 
+
         console.log(`Order created: ${razorpayOrderId} for razorpayOrder ${razorpayOrderId}`);
+
+        // Build an order object for additional services
+        const orderForServices: Order = {
+            id: razorpayOrderId,
+            ...orderData,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        };
+
+        // Run fraud detection on successful payment (don't block order processing)
+        try {
+            const fraudContext = {
+                order: orderForServices,
+                ipAddress: payload.ip_address || 'unknown',
+                email: customerEmail,
+                sessionId: `session_${razorpayOrderId}`,
+
+                userId: undefined // No user auth in current system
+            };
+
+            await fraudDetectionService.evaluateFraudRisk(fraudContext);
+        } catch (fraudError) {
+            console.error('Fraud detection failed:', fraudError);
+        }
+
+        // Log payment success analytics (don't block order processing)
+        try {
+            const sessionId = `session_${Date.now()}`;
+            await analyticsService.logPaymentSuccess(
+                razorpayOrderId,
+                (amountCaptured || fetchedOrder.amount) / 100,
+                fetchedOrder.currency,
+                razorpayPaymentId || '',
+                sessionId
+            );
+
+            await analyticsService.logEvent({
+                eventType: EventType.ORDER_COMPLETED,
+                sessionId,
+                orderId: razorpayOrderId,
+                metadata: {
+                    orderValue: (amountCaptured || fetchedOrder.amount) / 100,
+                    paymentAmount: (amountCaptured || fetchedOrder.amount) / 100,
+                    paymentCurrency: fetchedOrder.currency,
+                    orderStatus: 'paid'
+                }
+            });
+        } catch (analyticsError) {
+            console.error('Analytics logging failed:', analyticsError);
+        }
+
+        // Create shipping shipment (don't block order processing if fails)
+        try {
+            const shippingResult = await shippingService.createShipment(orderForServices);
+
+            if (shippingResult.success && shippingResult.shipmentDetails) {
+                // Update order with shipping information
+                await adminDb.collection('orders').doc(razorpayOrderId).update({
+                    shipping: {
+                        shipmentId: shippingResult.shipmentDetails.shipment_id,
+                        awbCode: shippingResult.shipmentDetails.awb_code,
+                        courierName: shippingResult.shipmentDetails.courier_name,
+                        trackingUrl: shippingResult.shipmentDetails.tracking_url,
+                        status: 'shipped'
+                    }
+                });
+            }
+        } catch (shippingError) {
+            console.error('Shipping creation failed:', shippingError);
+        }
 
         // Build an order object for email (use current time for client-side email representation)
         const orderForEmail: Order = {
@@ -135,6 +211,7 @@ export async function POST(request: NextRequest) {
 
         await sendOrderConfirmationEmail(orderForEmail);
 
+
         return NextResponse.json({ received: true, orderId: razorpayOrderId });
     } catch (error: any) {
         console.error('Error processing Razorpay webhook:', error);
@@ -142,4 +219,3 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: error.message || 'Internal error' }, { status: 500 });
     }
 }
-

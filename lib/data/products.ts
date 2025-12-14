@@ -2,10 +2,11 @@ import { Product } from '@/lib/types';
 
 // XVC - 3 Hero Products
 export const products: Product[] = [
+
     {
-        id: 'matte-liquid-lipstick',
+        id: 'xvc-lips-matte-liquid-lipstick',
         name: 'XVC Matte Liquid Lipstick',
-        slug: 'matte-liquid-lipstick',
+        slug: 'xvc-lips-matte-liquid-lipstick',
         category: 'lips',
         price: {
             inr: 1499,
@@ -25,10 +26,11 @@ export const products: Product[] = [
         stock: 100,
         createdAt: new Date(),
     },
+
     {
-        id: 'waterproof-eyeliner',
+        id: 'xvc-eyes-waterproof-eyeliner',
         name: 'XVC Waterproof Eyeliner',
-        slug: 'waterproof-eyeliner',
+        slug: 'xvc-eyes-waterproof-eyeliner',
         category: 'eyes',
         price: {
             inr: 999,
@@ -43,10 +45,11 @@ export const products: Product[] = [
         stock: 150,
         createdAt: new Date(),
     },
+
     {
-        id: 'cream-blush',
+        id: 'xvc-glow-cream-blush',
         name: 'XVC Glow — Cream Blush',
-        slug: 'cream-blush',
+        slug: 'xvc-glow-cream-blush',
         category: 'glow',
         price: {
             inr: 1299,

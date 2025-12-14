@@ -1,4 +1,3 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -18,25 +17,33 @@ service cloud.firestore {
       return email.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$');
     }
 
-    // USERS - Admin only access
-    match /users/{userId} {
-      // Only admin can read user data
-      allow read: if isAdmin();
-      
-      // Only admin can create/update user data
-      allow create, update: if isAdmin();
-      
-      // Users can read their own basic data (no sensitive info)
-      allow get, list: if request.auth != null && request.auth.uid == userId;
-      
-      // Nobody can delete users (admin only via Admin SDK)
-      allow delete: if false;
+    function isValidPrice(price) {
+      return price is map &&
+        'inr' in price && price.inr is number && price.inr >= 0 &&
+        'usd' in price && price.usd is number && price.usd >= 0;
     }
 
-    // PRODUCTS - Public read, admin write
+    function isValidOrderItem(item) {
+      return item is map &&
+        item.productId is string &&
+        item.quantity is number && item.quantity > 0 &&
+        item.price is number && item.price >= 0 &&
+        (!('shade' in item) || item.shade is string);
+    }
+
+    function isValidShippingAddress(address) {
+      return address is map &&
+        address.line1 is string && address.line1.size() > 0 &&
+        address.city is string && address.city.size() > 0 &&
+        address.state is string && address.state.size() > 0 &&
+        address.postalCode is string && address.postalCode.size() > 0 &&
+        address.country is string && address.country.size() > 0;
+    }
+
+    // PRODUCTS - Public read ONLY active products
     match /products/{productId} {
-      // Anyone can read products (public catalog)
-      allow read: if true;
+      // Anyone can read ACTIVE products only
+      allow read: if resource.data.active == true;
       
       // Only admin can create/update/delete products
       allow create, update, delete: if isAdmin();
@@ -45,63 +52,76 @@ service cloud.firestore {
       allow create: if isAdmin() && 
         request.resource.data.name is string &&
         request.resource.data.name.size() > 0 &&
-        request.resource.data.price is number &&
-        request.resource.data.price > 0;
+        isValidPrice(request.resource.data.price) &&
+        request.resource.data.stock is number &&
+        request.resource.data.stock >= 0 &&
+        request.resource.data.active is bool;
         
       allow update: if isAdmin() && 
         (!('name' in request.resource.data) || 
          (request.resource.data.name is string && request.resource.data.name.size() > 0)) &&
         (!('price' in request.resource.data) || 
-         (request.resource.data.price is number && request.resource.data.price > 0));
+         isValidPrice(request.resource.data.price)) &&
+        (!('stock' in request.resource.data) || 
+         (request.resource.data.stock is number && request.resource.data.stock >= 0)) &&
+        (!('active' in request.resource.data) || 
+         request.resource.data.active is bool);
     }
 
-    // ORDERS - MOST CRITICAL
+    // ORDERS - SERVER ONLY CREATION
     match /orders/{orderId} {
       // Only admin can read orders
       allow read: if isAdmin();
       
-      // Only server (webhook via Admin SDK) can create orders
+      // ONLY server (webhook via Admin SDK) can create orders
       allow create: if isServer();
       
-      // Only admin can update order status (Paid → Shipped)
+      // Only admin can update order status (Paid → Shipped → Delivered)
       allow update: if isAdmin();
-      
-      // Users can read their own orders (limited data)
-      allow get: if request.auth != null && 
-        request.auth.uid == resource.data.userId;
       
       // Nobody can delete orders
       allow delete: if false;
       
-      // Order data validation
+      // Strict order data validation
       allow create: if isServer() && 
-        request.resource.data.userId is string &&
-        request.resource.data.email is string &&
-        isValidEmail(request.resource.data.email) &&
+        request.resource.data.razorpayOrderId is string &&
+        request.resource.data.razorpayPaymentId is string &&
+        request.resource.data.customerName is string &&
+        request.resource.data.customerName.size() > 0 &&
+        request.resource.data.customerEmail is string &&
+        isValidEmail(request.resource.data.customerEmail) &&
+        request.resource.data.customerPhone is string &&
+        request.resource.data.customerPhone.size() > 0 &&
+        isValidShippingAddress(request.resource.data.shippingAddress) &&
+        request.resource.data.items is list &&
+        request.resource.data.items.size() > 0 &&
+        request.resource.data.items.forEach(item => isValidOrderItem(item)) &&
         request.resource.data.total is number &&
         request.resource.data.total > 0 &&
-        request.resource.data.status in ['pending', 'paid', 'shipped', 'delivered', 'cancelled'];
+        request.resource.data.status in ['pending', 'paid', 'shipped', 'delivered', 'cancelled'] &&
+        request.resource.data.paymentStatus in ['pending', 'paid', 'failed', 'refunded'];
         
       allow update: if isAdmin() && 
         (!('status' in request.resource.data) || 
-         request.resource.data.status in ['pending', 'paid', 'shipped', 'delivered', 'cancelled']);
+         request.resource.data.status in ['pending', 'paid', 'shipped', 'delivered', 'cancelled']) &&
+        (!('fulfillmentNotes' in request.resource.data) || 
+         request.resource.data.fulfillmentNotes is string);
+    }
+
+    // USERS - Admin only access
+    match /users/{userId} {
+      allow read, write: if isAdmin();
     }
 
     // ADMIN SETTINGS - Admin only
     match /adminSettings/{document} {
-      // Only admin can access admin settings
       allow read, write: if isAdmin();
     }
 
-    // AUDIT LOGS - Admin only
+    // AUDIT LOGS - Admin only, Server create
     match /auditLogs/{logId} {
-      // Only admin can read audit logs
       allow read: if isAdmin();
-      
-      // Server can create audit logs
       allow create: if isServer();
-      
-      // Nobody can update/delete audit logs
       allow update, delete: if false;
     }
   }

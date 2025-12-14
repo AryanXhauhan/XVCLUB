@@ -4,9 +4,12 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/lib/context/CartContext';
 import Button from '@/components/ui/Button';
+import PhoneInput from '@/components/ui/PhoneInput';
+import CountrySelect from '@/components/ui/CountrySelect';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { ShippingAddress } from '@/lib/types';
+import { validateCheckoutForm, validateEmail, validateRequired, validatePostalCode, formatPhoneToE164 } from '@/lib/utils/validation';
 
 export default function CheckoutPage() {
     const router = useRouter();
@@ -15,17 +18,22 @@ export default function CheckoutPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Form state
-    const [customerName, setCustomerName] = useState('');
-    const [customerEmail, setCustomerEmail] = useState('');
-    const [customerPhone, setCustomerPhone] = useState('');
+    const [fullName, setFullName] = useState('');
+    const [email, setEmail] = useState('');
+    const [phone, setPhone] = useState('');
+
     const [address, setAddress] = useState<ShippingAddress>({
         line1: '',
         line2: '',
         city: '',
         state: '',
         postalCode: '',
-        country: 'India',
+        country: 'India', // Default to India (country name, not code)
     });
+
+    // Validation state
+    const [errors, setErrors] = useState<{[key: string]: string}>({});
+    const [touched, setTouched] = useState<{[key: string]: boolean}>({});
 
     useEffect(() => {
         setMounted(true);
@@ -33,6 +41,38 @@ export default function CheckoutPage() {
             router.push('/cart');
         }
     }, [items, router]);
+
+    useEffect(() => {
+        // Validate form on every change
+        const formData = {
+            fullName,
+            email,
+            phone,
+            addressLine1: address.line1,
+            addressLine2: address.line2,
+            city: address.city,
+            state: address.state,
+            postalCode: address.postalCode,
+            country: address.country,
+        };
+
+        const validation = validateCheckoutForm(formData);
+        
+
+        // Only show errors for fields that have been touched
+        const newErrors: {[key: string]: string} = {};
+        Object.keys(validation.errors).forEach(field => {
+            if (touched[field]) {
+                const errorKey = field as keyof typeof validation.errors;
+                const errorMessage = validation.errors[errorKey];
+                if (errorMessage) {
+                    newErrors[field] = errorMessage;
+                }
+            }
+        });
+        
+        setErrors(newErrors);
+    }, [fullName, email, phone, address, touched]);
 
     if (!mounted) {
         return (
@@ -48,23 +88,148 @@ export default function CheckoutPage() {
         return null; // Will redirect
     }
 
+
+    const handleFieldChange = (field: string, value: string) => {
+        setTouched(prev => ({ ...prev, [field]: true }));
+        
+        switch (field) {
+            case 'fullName':
+                setFullName(value);
+                break;
+            case 'email':
+                setEmail(value);
+                break;
+            case 'phone':
+                setPhone(value);
+                break;
+            case 'addressLine1':
+                setAddress(prev => ({ ...prev, line1: value }));
+                break;
+            case 'addressLine2':
+                setAddress(prev => ({ ...prev, line2: value }));
+                break;
+            case 'city':
+                setAddress(prev => ({ ...prev, city: value }));
+                break;
+            case 'state':
+                setAddress(prev => ({ ...prev, state: value }));
+                break;
+            case 'postalCode':
+                setAddress(prev => ({ ...prev, postalCode: value }));
+                break;
+            case 'country':
+                setAddress(prev => ({ ...prev, country: value }));
+                break;
+        }
+    };
+
+    const handlePhoneCountryChange = (countryCode: string) => {
+        // Map country code to country name
+        const countryNameMap: { [key: string]: string } = {
+            'IN': 'India',
+            'US': 'United States',
+            'GB': 'United Kingdom',
+            'CA': 'Canada',
+            'AU': 'Australia',
+            'DE': 'Germany',
+            'FR': 'France',
+            'IT': 'Italy',
+            'ES': 'Spain',
+            'JP': 'Japan',
+            'CN': 'China',
+            'BR': 'Brazil',
+            'RU': 'Russia',
+            'MX': 'Mexico',
+            'KR': 'South Korea',
+            'NL': 'Netherlands',
+            'SE': 'Sweden',
+            'NO': 'Norway',
+            'DK': 'Denmark',
+            'FI': 'Finland',
+            'CH': 'Switzerland',
+            'AT': 'Austria',
+            'BE': 'Belgium',
+            'PL': 'Poland',
+            'CZ': 'Czech Republic',
+            'HU': 'Hungary',
+            'GR': 'Greece',
+            'PT': 'Portugal',
+            'IE': 'Ireland',
+            'IS': 'Iceland',
+            'LU': 'Luxembourg',
+            'MT': 'Malta',
+            'CY': 'Cyprus',
+            'EE': 'Estonia',
+            'LV': 'Latvia',
+            'LT': 'Lithuania',
+            'SK': 'Slovakia',
+            'SI': 'Slovenia',
+            'RO': 'Romania',
+            'BG': 'Bulgaria',
+            'HR': 'Croatia',
+        };
+        
+        const countryName = countryNameMap[countryCode] || countryCode;
+        setAddress(prev => ({ ...prev, country: countryName }));
+        setTouched(prev => ({ ...prev, country: true }));
+    };
+
+    const handleFieldBlur = (field: string) => {
+        setTouched(prev => ({ ...prev, [field]: true }));
+    };
+
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Client-side validation
-        if (!customerName.trim() || !customerEmail.trim() || !customerPhone.trim()) {
-            toast.error('Please fill in all required fields');
-            return;
-        }
+        // 🧪 STEP 6: QUICK TEST - Console log cart items
+        console.log("CART ITEMS:", items);
 
-        if (!address.line1.trim() || !address.city.trim() || !address.state.trim() || !address.postalCode.trim()) {
-            toast.error('Please fill in all shipping address fields');
+        // Mark all fields as touched
+        const allFields = ['fullName', 'email', 'phone', 'addressLine1', 'city', 'state', 'postalCode', 'country'];
+        const newTouched: {[key: string]: boolean} = {};
+        allFields.forEach(field => {
+            newTouched[field] = true;
+        });
+        setTouched(newTouched);
+
+        // Validate entire form
+        const formData = {
+            fullName,
+            email,
+            phone,
+            addressLine1: address.line1,
+            addressLine2: address.line2,
+            city: address.city,
+            state: address.state,
+            postalCode: address.postalCode,
+            country: address.country,
+        };
+
+        const validation = validateCheckoutForm(formData);
+        
+
+        if (!validation.isValid) {
+            // Convert ValidationErrors to plain object
+            const plainErrors: {[key: string]: string} = {};
+            Object.keys(validation.errors).forEach(field => {
+                const errorKey = field as keyof typeof validation.errors;
+                const errorMessage = validation.errors[errorKey];
+                if (errorMessage) {
+                    plainErrors[field] = errorMessage;
+                }
+            });
+            setErrors(plainErrors);
+            toast.error('Please fix the errors below');
             return;
         }
 
         setIsSubmitting(true);
 
         try {
+            // Format phone number to E.164 format
+            const formattedPhone = formatPhoneToE164(phone);
+
             const response = await fetch('/api/create-checkout-session', {
                 method: 'POST',
                 headers: {
@@ -72,9 +237,9 @@ export default function CheckoutPage() {
                 },
                 body: JSON.stringify({
                     items,
-                    customerName,
-                    customerEmail,
-                    customerPhone,
+                    customerName: fullName,
+                    customerEmail: email,
+                    customerPhone: formattedPhone,
                     shippingAddress: address,
                 }),
             });
@@ -114,9 +279,9 @@ export default function CheckoutPage() {
                     window.location.href = `/order-success?order_id=${response.razorpay_order_id}&payment_id=${response.razorpay_payment_id}`;
                 },
                 prefill: {
-                    name: customerName,
-                    email: customerEmail,
-                    contact: customerPhone,
+                    name: fullName,
+                    email: email,
+                    contact: formattedPhone,
                 },
             };
 
@@ -129,6 +294,23 @@ export default function CheckoutPage() {
             setIsSubmitting(false);
         }
     };
+
+    // Check if form is valid
+    const formData = {
+        fullName,
+        email,
+        phone,
+        addressLine1: address.line1,
+        addressLine2: address.line2,
+        city: address.city,
+        state: address.state,
+        postalCode: address.postalCode,
+        country: address.country,
+    };
+
+    const validation = validateCheckoutForm(formData);
+    const isFormValid = validation.isValid;
+    const hasErrors = Object.keys(errors).length > 0;
 
     const subtotal = getTotal();
     const displaySubtotal = `₹${subtotal.toLocaleString()}`;
@@ -146,17 +328,33 @@ export default function CheckoutPage() {
                             <h2 className="text-xl text-xvc-black">Customer Information</h2>
                             
                             <div>
-                                <label htmlFor="name" className="block text-sm text-xvc-graphite mb-2">
+                                <label htmlFor="fullName" className="block text-sm text-xvc-graphite mb-2">
                                     Full Name *
                                 </label>
                                 <input
                                     type="text"
-                                    id="name"
-                                    required
-                                    value={customerName}
-                                    onChange={(e) => setCustomerName(e.target.value)}
-                                    className="w-full px-4 py-2 border border-xvc-taupe/30 bg-xvc-offwhite text-xvc-black focus:outline-none focus:border-xvc-black"
+                                    id="fullName"
+                                    value={fullName}
+                                    onChange={(e) => handleFieldChange('fullName', e.target.value)}
+                                    onBlur={() => handleFieldBlur('fullName')}
+                                    className={`
+                                        w-full px-4 py-2 border transition-colors duration-200 
+                                        ${errors.fullName 
+                                            ? 'border-red-500 bg-red-50' 
+                                            : touched.fullName && !errors.fullName
+                                            ? 'border-green-500 bg-green-50'
+                                            : 'border-xvc-taupe/30 bg-xvc-offwhite focus:border-xvc-black'
+                                        }
+                                        text-xvc-black focus:outline-none focus:bg-xvc-offwhite
+                                    `}
+                                    placeholder="Enter your full name"
                                 />
+                                {errors.fullName && (
+                                    <p className="text-sm text-red-600 mt-1">{errors.fullName}</p>
+                                )}
+                                {touched.fullName && !errors.fullName && fullName && (
+                                    <p className="text-sm text-green-600 mt-1">✓ Looks good</p>
+                                )}
                             </div>
 
                             <div>
@@ -166,26 +364,40 @@ export default function CheckoutPage() {
                                 <input
                                     type="email"
                                     id="email"
-                                    required
-                                    value={customerEmail}
-                                    onChange={(e) => setCustomerEmail(e.target.value)}
-                                    className="w-full px-4 py-2 border border-xvc-taupe/30 bg-xvc-offwhite text-xvc-black focus:outline-none focus:border-xvc-black"
+                                    value={email}
+                                    onChange={(e) => handleFieldChange('email', e.target.value)}
+                                    onBlur={() => handleFieldBlur('email')}
+                                    className={`
+                                        w-full px-4 py-2 border transition-colors duration-200 
+                                        ${errors.email 
+                                            ? 'border-red-500 bg-red-50' 
+                                            : touched.email && !errors.email
+                                            ? 'border-green-500 bg-green-50'
+                                            : 'border-xvc-taupe/30 bg-xvc-offwhite focus:border-xvc-black'
+                                        }
+                                        text-xvc-black focus:outline-none focus:bg-xvc-offwhite
+                                    `}
+                                    placeholder="Enter your email address"
                                 />
+                                {errors.email && (
+                                    <p className="text-sm text-red-600 mt-1">{errors.email}</p>
+                                )}
+                                {touched.email && !errors.email && email && (
+                                    <p className="text-sm text-green-600 mt-1">✓ Valid email</p>
+                                )}
                             </div>
 
-                            <div>
-                                <label htmlFor="phone" className="block text-sm text-xvc-graphite mb-2">
-                                    Phone *
-                                </label>
-                                <input
-                                    type="tel"
-                                    id="phone"
-                                    required
-                                    value={customerPhone}
-                                    onChange={(e) => setCustomerPhone(e.target.value)}
-                                    className="w-full px-4 py-2 border border-xvc-taupe/30 bg-xvc-offwhite text-xvc-black focus:outline-none focus:border-xvc-black"
-                                />
-                            </div>
+
+                            <PhoneInput
+                                value={phone}
+                                onChange={(value) => handleFieldChange('phone', value)}
+                                onCountryChange={handlePhoneCountryChange}
+                                error={errors.phone}
+                                label="Phone Number"
+                                placeholder="Enter your phone number"
+                                defaultCountry="IN"
+                                className=""
+                            />
                         </div>
 
                         {/* Shipping Address */}
@@ -193,29 +405,47 @@ export default function CheckoutPage() {
                             <h2 className="text-xl text-xvc-black">Shipping Address</h2>
                             
                             <div>
-                                <label htmlFor="line1" className="block text-sm text-xvc-graphite mb-2">
+                                <label htmlFor="addressLine1" className="block text-sm text-xvc-graphite mb-2">
                                     Address Line 1 *
                                 </label>
                                 <input
                                     type="text"
-                                    id="line1"
-                                    required
+                                    id="addressLine1"
                                     value={address.line1}
-                                    onChange={(e) => setAddress({ ...address, line1: e.target.value })}
-                                    className="w-full px-4 py-2 border border-xvc-taupe/30 bg-xvc-offwhite text-xvc-black focus:outline-none focus:border-xvc-black"
+                                    onChange={(e) => handleFieldChange('addressLine1', e.target.value)}
+                                    onBlur={() => handleFieldBlur('addressLine1')}
+                                    className={`
+                                        w-full px-4 py-2 border transition-colors duration-200 
+                                        ${errors.addressLine1 
+                                            ? 'border-red-500 bg-red-50' 
+                                            : touched.addressLine1 && !errors.addressLine1
+                                            ? 'border-green-500 bg-green-50'
+                                            : 'border-xvc-taupe/30 bg-xvc-offwhite focus:border-xvc-black'
+                                        }
+                                        text-xvc-black focus:outline-none focus:bg-xvc-offwhite
+                                    `}
+                                    placeholder="Street address, apartment, suite, unit, etc."
                                 />
+                                {errors.addressLine1 && (
+                                    <p className="text-sm text-red-600 mt-1">{errors.addressLine1}</p>
+                                )}
+                                {touched.addressLine1 && !errors.addressLine1 && address.line1 && (
+                                    <p className="text-sm text-green-600 mt-1">✓ Valid address</p>
+                                )}
                             </div>
 
                             <div>
-                                <label htmlFor="line2" className="block text-sm text-xvc-graphite mb-2">
+                                <label htmlFor="addressLine2" className="block text-sm text-xvc-graphite mb-2">
                                     Address Line 2
                                 </label>
                                 <input
                                     type="text"
-                                    id="line2"
+                                    id="addressLine2"
                                     value={address.line2}
-                                    onChange={(e) => setAddress({ ...address, line2: e.target.value })}
+                                    onChange={(e) => handleFieldChange('addressLine2', e.target.value)}
+                                    onBlur={() => handleFieldBlur('addressLine2')}
                                     className="w-full px-4 py-2 border border-xvc-taupe/30 bg-xvc-offwhite text-xvc-black focus:outline-none focus:border-xvc-black"
+                                    placeholder="Building, floor, landmark (optional)"
                                 />
                             </div>
 
@@ -227,11 +457,27 @@ export default function CheckoutPage() {
                                     <input
                                         type="text"
                                         id="city"
-                                        required
                                         value={address.city}
-                                        onChange={(e) => setAddress({ ...address, city: e.target.value })}
-                                        className="w-full px-4 py-2 border border-xvc-taupe/30 bg-xvc-offwhite text-xvc-black focus:outline-none focus:border-xvc-black"
+                                        onChange={(e) => handleFieldChange('city', e.target.value)}
+                                        onBlur={() => handleFieldBlur('city')}
+                                        className={`
+                                            w-full px-4 py-2 border transition-colors duration-200 
+                                            ${errors.city 
+                                                ? 'border-red-500 bg-red-50' 
+                                                : touched.city && !errors.city
+                                                ? 'border-green-500 bg-green-50'
+                                                : 'border-xvc-taupe/30 bg-xvc-offwhite focus:border-xvc-black'
+                                            }
+                                            text-xvc-black focus:outline-none focus:bg-xvc-offwhite
+                                        `}
+                                        placeholder="Enter city"
                                     />
+                                    {errors.city && (
+                                        <p className="text-sm text-red-600 mt-1">{errors.city}</p>
+                                    )}
+                                    {touched.city && !errors.city && address.city && (
+                                        <p className="text-sm text-green-600 mt-1">✓ Valid city</p>
+                                    )}
                                 </div>
 
                                 <div>
@@ -241,11 +487,27 @@ export default function CheckoutPage() {
                                     <input
                                         type="text"
                                         id="state"
-                                        required
                                         value={address.state}
-                                        onChange={(e) => setAddress({ ...address, state: e.target.value })}
-                                        className="w-full px-4 py-2 border border-xvc-taupe/30 bg-xvc-offwhite text-xvc-black focus:outline-none focus:border-xvc-black"
+                                        onChange={(e) => handleFieldChange('state', e.target.value)}
+                                        onBlur={() => handleFieldBlur('state')}
+                                        className={`
+                                            w-full px-4 py-2 border transition-colors duration-200 
+                                            ${errors.state 
+                                                ? 'border-red-500 bg-red-50' 
+                                                : touched.state && !errors.state
+                                                ? 'border-green-500 bg-green-50'
+                                                : 'border-xvc-taupe/30 bg-xvc-offwhite focus:border-xvc-black'
+                                            }
+                                            text-xvc-black focus:outline-none focus:bg-xvc-offwhite
+                                        `}
+                                        placeholder="Enter state/province"
                                     />
+                                    {errors.state && (
+                                        <p className="text-sm text-red-600 mt-1">{errors.state}</p>
+                                    )}
+                                    {touched.state && !errors.state && address.state && (
+                                        <p className="text-sm text-green-600 mt-1">✓ Valid state</p>
+                                    )}
                                 </div>
                             </div>
 
@@ -257,26 +519,36 @@ export default function CheckoutPage() {
                                     <input
                                         type="text"
                                         id="postalCode"
-                                        required
                                         value={address.postalCode}
-                                        onChange={(e) => setAddress({ ...address, postalCode: e.target.value })}
-                                        className="w-full px-4 py-2 border border-xvc-taupe/30 bg-xvc-offwhite text-xvc-black focus:outline-none focus:border-xvc-black"
+                                        onChange={(e) => handleFieldChange('postalCode', e.target.value)}
+                                        onBlur={() => handleFieldBlur('postalCode')}
+                                        className={`
+                                            w-full px-4 py-2 border transition-colors duration-200 
+                                            ${errors.postalCode 
+                                                ? 'border-red-500 bg-red-50' 
+                                                : touched.postalCode && !errors.postalCode
+                                                ? 'border-green-500 bg-green-50'
+                                                : 'border-xvc-taupe/30 bg-xvc-offwhite focus:border-xvc-black'
+                                            }
+                                            text-xvc-black focus:outline-none focus:bg-xvc-offwhite
+                                        `}
+                                        placeholder="Enter postal code"
                                     />
+                                    {errors.postalCode && (
+                                        <p className="text-sm text-red-600 mt-1">{errors.postalCode}</p>
+                                    )}
+                                    {touched.postalCode && !errors.postalCode && address.postalCode && (
+                                        <p className="text-sm text-green-600 mt-1">✓ Valid postal code</p>
+                                    )}
                                 </div>
 
-                                <div>
-                                    <label htmlFor="country" className="block text-sm text-xvc-graphite mb-2">
-                                        Country *
-                                    </label>
-                                    <input
-                                        type="text"
-                                        id="country"
-                                        required
-                                        value={address.country}
-                                        onChange={(e) => setAddress({ ...address, country: e.target.value })}
-                                        className="w-full px-4 py-2 border border-xvc-taupe/30 bg-xvc-offwhite text-xvc-black focus:outline-none focus:border-xvc-black"
-                                    />
-                                </div>
+                                <CountrySelect
+                                    value={address.country}
+                                    onChange={(country) => handleFieldChange('country', country)}
+                                    error={errors.country}
+                                    label="Country"
+                                    placeholder="Select your country"
+                                />
                             </div>
                         </div>
                     </div>
@@ -324,13 +596,34 @@ export default function CheckoutPage() {
                                 </Link>
                             </div>
 
+                            {/* Form Validation Summary */}
+                            {hasErrors && (
+                                <div className="border-t border-xvc-taupe/30 pt-4">
+                                    <p className="text-sm text-red-600 mb-2">
+                                        Please fix the errors above to complete your order
+                                    </p>
+                                </div>
+                            )}
+
                             <Button
                                 type="submit"
-                                disabled={isSubmitting}
-                                className="w-full"
+                                disabled={isSubmitting || !isFormValid}
+                                className={`
+                                    w-full transition-all duration-200
+                                    ${!isFormValid 
+                                        ? 'opacity-50 cursor-not-allowed bg-xvc-taupe text-xvc-black' 
+                                        : 'hover:bg-xvc-black hover:text-xvc-offwhite'
+                                    }
+                                `}
                             >
                                 {isSubmitting ? 'Processing...' : 'Complete Order'}
                             </Button>
+                            
+                            {!isFormValid && hasErrors && (
+                                <p className="text-xs text-center text-xvc-graphite">
+                                    Complete all required fields to enable checkout
+                                </p>
+                            )}
                         </div>
                     </div>
                 </form>
@@ -338,4 +631,3 @@ export default function CheckoutPage() {
         </main>
     );
 }
-

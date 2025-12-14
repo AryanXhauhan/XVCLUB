@@ -40,24 +40,37 @@ export async function PATCH(
             );
         }
 
-        const { orderId } = params;
-        const { status } = await request.json();
 
-        // Validate status
-        if (!['paid', 'shipped', 'delivered'].includes(status)) {
+        const { orderId } = params;
+        const body = await request.json();
+        const { status, fulfillmentNotes } = body;
+
+        // Validate status if provided
+        if (status && !['pending', 'paid', 'shipped', 'delivered', 'cancelled'].includes(status)) {
             return NextResponse.json(
                 { error: 'Invalid status' },
                 { status: 400 }
             );
         }
 
-        // Update order
-        await adminDb.collection('orders').doc(orderId).update({
-            status,
+        // Prepare update object
+        const updateData: any = {
             updatedAt: FieldValue.serverTimestamp(),
-        });
+            lastUpdated: FieldValue.serverTimestamp(),
+        };
 
-        return NextResponse.json({ success: true, orderId, status });
+        if (status) {
+            updateData.status = status;
+        }
+
+        if (fulfillmentNotes !== undefined) {
+            updateData.fulfillmentNotes = fulfillmentNotes;
+        }
+
+        // Update order
+        await adminDb.collection('orders').doc(orderId).update(updateData);
+
+        return NextResponse.json({ success: true, orderId, status, fulfillmentNotes });
     } catch (error: any) {
         console.error('Error updating order:', error);
         return NextResponse.json(

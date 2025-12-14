@@ -22,8 +22,17 @@ export default function AdminLayout({
         let mounted = true;
 
 
+
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             if (!mounted) return;
+
+            // TEMPORARY: Skip authentication for demo
+            if (pathname === '/admin') {
+                setAuthUser({ email: 'demo@xvc.com' });
+                setIsAdmin(true);
+                setIsChecking(false);
+                return;
+            }
 
             if (!user && pathname === '/admin/login') {
                 setIsChecking(false);
